@@ -27,12 +27,13 @@ public interface Exporter<T> {
 
     /**
      * get invoker.
-     *
+     * 获得对应的 Invoker 。
      * @return invoker
      */
     Invoker<T> getInvoker();
 
     /**
+     * 取消暴露。
      * unexport.
      * <p>
      * <code>
