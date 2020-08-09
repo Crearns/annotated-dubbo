@@ -35,11 +35,13 @@ class InjvmExporter<T> extends AbstractExporter<T> {
         super(invoker);
         this.key = key;
         this.exporterMap = exporterMap;
+        // 添加到 Exporter 集合
         exporterMap.put(key, this);
     }
 
     public void unexport() {
         super.unexport();
+        // 移除出 Exporter 集合
         exporterMap.remove(key);
     }
 

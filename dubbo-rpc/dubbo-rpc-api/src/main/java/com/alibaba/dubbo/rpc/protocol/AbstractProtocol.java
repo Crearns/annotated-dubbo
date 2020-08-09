@@ -38,6 +38,8 @@ public abstract class AbstractProtocol implements Protocol {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
+    // exporterMap 属性，Exporter 集合。该集合拥有该协议中，所有暴露中的 Exporter 对象
+    // 其中 key 为服务键。不同协议的实现，生成的方式略有差距。
     protected final Map<String, Exporter<?>> exporterMap = new ConcurrentHashMap<String, Exporter<?>>();
 
     //TODO SOFEREFENCE
