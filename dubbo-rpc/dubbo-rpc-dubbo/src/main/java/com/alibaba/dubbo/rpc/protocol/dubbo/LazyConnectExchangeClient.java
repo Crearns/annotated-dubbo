@@ -36,6 +36,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * dubbo protocol support class.
+ * 支持懒连接服务器的信息交换客户端实现类。
  */
 @SuppressWarnings("deprecation")
 final class LazyConnectExchangeClient implements ExchangeClient {
@@ -43,13 +44,41 @@ final class LazyConnectExchangeClient implements ExchangeClient {
     // when this warning rises from invocation, program probably have bug.
     static final String REQUEST_WITH_WARNING_KEY = "lazyclient_request_with_warning";
     private final static Logger logger = LoggerFactory.getLogger(LazyConnectExchangeClient.class);
+
+    /**
+     * 请求时，是否检查告警
+     */
     protected final boolean requestWithWarning;
+
+    /**
+     * URL
+     */
     private final URL url;
+
+    /**
+     * 通道处理器
+     */
     private final ExchangeHandler requestHandler;
+
+    /**
+     * 连接锁
+     */
     private final Lock connectLock = new ReentrantLock();
+
+    /**
+     * lazy connect 如果没有初始化时的连接状态
+     */
     // lazy connect, initial state for connection
     private final boolean initialState;
+
+    /**
+     * 通信客户端
+     */
     private volatile ExchangeClient client;
+
+    /**
+     * 警告计数器。每超过一定次数，打印告警日志。参见 {@link #warning(Object)}
+     */
     private AtomicLong warningcount = new AtomicLong(0);
 
     public LazyConnectExchangeClient(URL url, ExchangeHandler requestHandler) {
