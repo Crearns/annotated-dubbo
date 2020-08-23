@@ -32,6 +32,7 @@ public abstract class AbstractCompiler implements Compiler {
     private static final Pattern CLASS_PATTERN = Pattern.compile("class\\s+([$_a-zA-Z][$_a-zA-Z0-9]*)\\s+");
 
     public Class<?> compile(String code, ClassLoader classLoader) {
+        // 获得包名
         code = code.trim();
         Matcher matcher = PACKAGE_PATTERN.matcher(code);
         String pkg;
@@ -40,6 +41,7 @@ public abstract class AbstractCompiler implements Compiler {
         } else {
             pkg = "";
         }
+        // 获得类名
         matcher = CLASS_PATTERN.matcher(code);
         String cls;
         if (matcher.find()) {
@@ -47,14 +49,19 @@ public abstract class AbstractCompiler implements Compiler {
         } else {
             throw new IllegalArgumentException("No such class name in " + code);
         }
+        // 获得完整类名
         String className = pkg != null && pkg.length() > 0 ? pkg + "." + cls : cls;
         try {
+            // 加载类，若已经存在
+            // 加载成功，说明已存在
             return Class.forName(className, true, ClassHelper.getCallerClassLoader(getClass()));
-        } catch (ClassNotFoundException e) {
+        } catch (ClassNotFoundException e) { // 类不存在，说明可能未编译过，进行编译
+            // 代码格式不正确
             if (!code.endsWith("}")) {
                 throw new IllegalStateException("The java code not endsWith \"}\", code: \n" + code + "\n");
             }
             try {
+                // 编译代码
                 return doCompile(className, code);
             } catch (RuntimeException t) {
                 throw t;

@@ -41,25 +41,34 @@ import java.util.concurrent.TimeUnit;
  */
 public abstract class FailbackRegistry extends AbstractRegistry {
 
+    // 定时任务执行器
     // Scheduled executor service
     private final ScheduledExecutorService retryExecutor = Executors.newScheduledThreadPool(1, new NamedThreadFactory("DubboRegistryFailedRetryTimer", true));
 
+    // 失败重试定时器，定时检查是否有请求失败，如有，无限次重试
     // Timer for failure retry, regular check if there is a request for failure, and if there is, an unlimited retry
     private final ScheduledFuture<?> retryFuture;
 
+    // 失败发起注册失败的 URL 集合
     private final Set<URL> failedRegistered = new ConcurrentHashSet<URL>();
 
+    // 失败取消注册失败的 URL 集合
     private final Set<URL> failedUnregistered = new ConcurrentHashSet<URL>();
 
+    // 失败发起订阅失败的监听器集合
     private final ConcurrentMap<URL, Set<NotifyListener>> failedSubscribed = new ConcurrentHashMap<URL, Set<NotifyListener>>();
 
+    // 失败取消订阅失败的监听器集合
     private final ConcurrentMap<URL, Set<NotifyListener>> failedUnsubscribed = new ConcurrentHashMap<URL, Set<NotifyListener>>();
 
+    // 失败通知通知的 URL 集合
     private final ConcurrentMap<URL, Map<NotifyListener, List<URL>>> failedNotified = new ConcurrentHashMap<URL, Map<NotifyListener, List<URL>>>();
 
     public FailbackRegistry(URL url) {
         super(url);
+        // 重试频率，单位：毫秒
         int retryPeriod = url.getParameter(Constants.REGISTRY_RETRY_PERIOD_KEY, Constants.DEFAULT_REGISTRY_RETRY_PERIOD);
+        // 创建失败重试定时器
         this.retryFuture = retryExecutor.scheduleWithFixedDelay(new Runnable() {
             public void run() {
                 // Check and connect to the registry
@@ -122,17 +131,20 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void register(URL url) {
+        // 调用父类注册方法
         super.register(url);
+        // 在失败map中删除
         failedRegistered.remove(url);
         failedUnregistered.remove(url);
         try {
+            // 真正的注册，由具体实现完成
             // Sending a registration request to the server side
             doRegister(url);
         } catch (Exception e) {
             Throwable t = e;
-
+            // 如果开启了启动时检测，则直接抛出异常
             // If the startup detection is opened, the Exception is thrown directly.
-            boolean check = getUrl().getParameter(Constants.CHECK_KEY, true)
+            boolean check = getUrl().getParameter(Constants.CHECK_KEY, true) // 检查
                     && url.getParameter(Constants.CHECK_KEY, true)
                     && !Constants.CONSUMER_PROTOCOL.equals(url.getProtocol());
             boolean skipFailback = t instanceof SkipFailbackWrapperException;
@@ -145,6 +157,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
                 logger.error("Failed to register " + url + ", waiting for retry, cause: " + t.getMessage(), t);
             }
 
+            // 将失败的注册请求记录到 `failedRegistered`，定时重试
             // Record a failed registration request to a failed list, retry regularly
             failedRegistered.add(url);
         }
@@ -152,10 +165,13 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void unregister(URL url) {
+        // 调用父类取消注册方法
         super.unregister(url);
+        // 在失败map中删除
         failedRegistered.remove(url);
         failedUnregistered.remove(url);
         try {
+            // 由子类完成
             // Sending a cancellation request to the server side
             doUnregister(url);
         } catch (Exception e) {
@@ -175,6 +191,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
                 logger.error("Failed to uregister " + url + ", waiting for retry, cause: " + t.getMessage(), t);
             }
 
+            // 将失败的注册请求记录到 `failedUnregistered`，定时重试
             // Record a failed registration request to a failed list, retry regularly
             failedUnregistered.add(url);
         }
@@ -182,9 +199,12 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void subscribe(URL url, NotifyListener listener) {
+        // 调用父类订阅
         super.subscribe(url, listener);
+        // 删除失败map  为什么之前的不封装成方法呢？
         removeFailedSubscribed(url, listener);
         try {
+            // 子类实现
             // Sending a subscription request to the server side
             doSubscribe(url, listener);
         } catch (Exception e) {
@@ -216,7 +236,9 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void unsubscribe(URL url, NotifyListener listener) {
+        // 调用父类取消订阅
         super.unsubscribe(url, listener);
+        // 删除失败map
         removeFailedSubscribed(url, listener);
         try {
             // Sending a canceling subscription request to the server side
@@ -256,6 +278,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
             throw new IllegalArgumentException("notify listener == null");
         }
         try {
+            // 调用父类的方法 如果失败则插入到map定期重试
             doNotify(url, listener, urls);
         } catch (Exception t) {
             // Record a failed registration request to a failed list, retry regularly
@@ -275,6 +298,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     protected void recover() throws Exception {
+        // register 恢复注册，添加到 `failedRegistered` ，定时重试
         // register
         Set<URL> recoverRegistered = new HashSet<URL>(getRegistered());
         if (!recoverRegistered.isEmpty()) {
@@ -285,6 +309,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
                 failedRegistered.add(url);
             }
         }
+        // subscribe 恢复订阅，添加到 `failedSubscribed` ，定时重试
         // subscribe
         Map<URL, Set<NotifyListener>> recoverSubscribed = new HashMap<URL, Set<NotifyListener>>(getSubscribed());
         if (!recoverSubscribed.isEmpty()) {
@@ -302,6 +327,8 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     // Retry the failed actions
     protected void retry() {
+        // 遍历五个 failedXXX 属性，重试对应的操作。
+        // todo 如果还失败怎么办？
         if (!failedRegistered.isEmpty()) {
             Set<URL> failed = new HashSet<URL>(failedRegistered);
             if (failed.size() > 0) {
