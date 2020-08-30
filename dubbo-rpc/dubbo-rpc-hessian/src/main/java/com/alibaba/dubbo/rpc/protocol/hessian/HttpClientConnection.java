@@ -34,6 +34,9 @@ import java.net.URL;
  */
 public class HttpClientConnection implements HessianConnection {
 
+    /**
+     * Apache HttpClient
+     */
     private final HttpClient httpClient;
 
     private final ByteArrayOutputStream output;

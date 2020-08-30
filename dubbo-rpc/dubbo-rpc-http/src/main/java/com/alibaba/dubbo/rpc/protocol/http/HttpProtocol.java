@@ -45,10 +45,24 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class HttpProtocol extends AbstractProxyProtocol {
 
+    /**
+     * 默认服务器端口
+     */
     public static final int DEFAULT_PORT = 80;
 
+    /**
+     * Http 服务器集合
+     *
+     * key：ip:port
+     */
     private final Map<String, HttpServer> serverMap = new ConcurrentHashMap<String, HttpServer>();
 
+
+    /**
+     * Spring HttpInvokerServiceExporter 集合
+     *
+     * key：path 服务名
+     */
     private final Map<String, HttpInvokerServiceExporter> skeletonMap = new ConcurrentHashMap<String, HttpInvokerServiceExporter>();
 
     private HttpBinder httpBinder;
@@ -66,12 +80,15 @@ public class HttpProtocol extends AbstractProxyProtocol {
     }
 
     protected <T> Runnable doExport(final T impl, Class<T> type, URL url) throws RpcException {
+        // 获得服务器地址
         String addr = getAddr(url);
+        // 获得 HttpServer 对象。若不存在，进行创建。
         HttpServer server = serverMap.get(addr);
         if (server == null) {
             server = httpBinder.bind(url, new InternalHandler());
             serverMap.put(addr, server);
         }
+        // 创建 HttpInvokerServiceExporter 对象
         final HttpInvokerServiceExporter httpServiceExporter = new HttpInvokerServiceExporter();
         httpServiceExporter.setServiceInterface(type);
         httpServiceExporter.setService(impl);
@@ -80,8 +97,10 @@ public class HttpProtocol extends AbstractProxyProtocol {
         } catch (Exception e) {
             throw new RpcException(e.getMessage(), e);
         }
+        // 添加到 skeletonMap 中
         final String path = url.getAbsolutePath();
         skeletonMap.put(path, httpServiceExporter);
+        // 返回取消暴露的回调 Runnable
         return new Runnable() {
             public void run() {
                 skeletonMap.remove(path);

@@ -62,16 +62,21 @@ public abstract class AbstractProxyProtocol extends AbstractProtocol {
 
     @SuppressWarnings("unchecked")
     public <T> Exporter<T> export(final Invoker<T> invoker) throws RpcException {
+        // 获得服务键
         final String uri = serviceKey(invoker.getUrl());
+        // 获得 Exporter 对象。若已经暴露，直接返回。
         Exporter<T> exporter = (Exporter<T>) exporterMap.get(uri);
         if (exporter != null) {
             return exporter;
         }
+        // 执行暴露服务
         final Runnable runnable = doExport(proxyFactory.getProxy(invoker), invoker.getInterface(), invoker.getUrl());
         exporter = new AbstractExporter<T>(invoker) {
             public void unexport() {
+                // 取消暴露
                 super.unexport();
                 exporterMap.remove(uri);
+                // 执行取消暴露的回调
                 if (runnable != null) {
                     try {
                         runnable.run();
@@ -81,17 +86,22 @@ public abstract class AbstractProxyProtocol extends AbstractProtocol {
                 }
             }
         };
+        // 添加到 Exporter 集合
         exporterMap.put(uri, exporter);
         return exporter;
     }
 
     public <T> Invoker<T> refer(final Class<T> type, final URL url) throws RpcException {
+        // 执行引用服务
         final Invoker<T> tagert = proxyFactory.getInvoker(doRefer(type, url), type, url);
+        // 创建 Invoker 对象
         Invoker<T> invoker = new AbstractInvoker<T>(type, url) {
             @Override
             protected Result doInvoke(Invocation invocation) throws Throwable {
                 try {
+                    // 调用
                     Result result = tagert.invoke(invocation);
+                    // 若返回结果带有异常，并且需要抛出，则抛出异常。
                     Throwable e = result.getException();
                     if (e != null) {
                         for (Class<?> rpcException : rpcExceptions) {
@@ -102,15 +112,18 @@ public abstract class AbstractProxyProtocol extends AbstractProtocol {
                     }
                     return result;
                 } catch (RpcException e) {
+                    // 若是未知异常，获得异常对应的错误码
                     if (e.getCode() == RpcException.UNKNOWN_EXCEPTION) {
                         e.setCode(getErrorCode(e.getCause()));
                     }
                     throw e;
                 } catch (Throwable e) {
+                    // 抛出 RpcException 异常
                     throw getRpcException(type, url, invocation, e);
                 }
             }
         };
+        // 添加到 Invoker 集合。
         invokers.add(invoker);
         return invoker;
     }

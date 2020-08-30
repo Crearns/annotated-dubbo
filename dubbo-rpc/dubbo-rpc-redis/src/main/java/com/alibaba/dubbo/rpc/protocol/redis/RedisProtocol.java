@@ -66,6 +66,7 @@ public class RedisProtocol extends AbstractProtocol {
 
     public <T> Invoker<T> refer(final Class<T> type, final URL url) throws RpcException {
         try {
+            // 创建 GenericObjectPoolConfig 对象，设置配置
             GenericObjectPoolConfig config = new GenericObjectPoolConfig();
             config.setTestOnBorrow(url.getParameter("test.on.borrow", true));
             config.setTestOnReturn(url.getParameter("test.on.return", false));
@@ -86,29 +87,36 @@ public class RedisProtocol extends AbstractProtocol {
                 config.setTimeBetweenEvictionRunsMillis(url.getParameter("time.between.eviction.runs.millis", 0));
             if (url.getParameter("min.evictable.idle.time.millis", 0) > 0)
                 config.setMinEvictableIdleTimeMillis(url.getParameter("min.evictable.idle.time.millis", 0));
+            // 创建 JedisPool 对象
             final JedisPool jedisPool = new JedisPool(config, url.getHost(), url.getPort(DEFAULT_PORT),
                     url.getParameter(Constants.TIMEOUT_KEY, Constants.DEFAULT_TIMEOUT));
+            // 处理方法名的映射
             final int expiry = url.getParameter("expiry", 0);
             final String get = url.getParameter("get", "get");
             final String set = url.getParameter("set", Map.class.equals(type) ? "put" : "set");
             final String delete = url.getParameter("delete", Map.class.equals(type) ? "remove" : "delete");
+            // 创建 Invoker 对象
             return new AbstractInvoker<T>(type, url) {
                 protected Result doInvoke(Invocation invocation) throws Throwable {
                     Jedis resource = null;
                     try {
+                        // 获得 Redis Resource
                         resource = jedisPool.getResource();
 
+                        // Redis get 指令
                         if (get.equals(invocation.getMethodName())) {
                             if (invocation.getArguments().length != 1) {
                                 throw new IllegalArgumentException("The redis get method arguments mismatch, must only one arguments. interface: " + type.getName() + ", method: " + invocation.getMethodName() + ", url: " + url);
                             }
+                            // 获得值
                             byte[] value = resource.get(String.valueOf(invocation.getArguments()[0]).getBytes());
                             if (value == null) {
                                 return new RpcResult();
                             }
+                            // 反序列化
                             ObjectInput oin = getSerialization(url).deserialize(url, new ByteArrayInputStream(value));
                             return new RpcResult(oin.readObject());
-                        } else if (set.equals(invocation.getMethodName())) {
+                        } else if (set.equals(invocation.getMethodName())) { // Redis set/put 指令
                             if (invocation.getArguments().length != 2) {
                                 throw new IllegalArgumentException("The redis set method arguments mismatch, must be two arguments. interface: " + type.getName() + ", method: " + invocation.getMethodName() + ", url: " + url);
                             }
@@ -116,15 +124,18 @@ public class RedisProtocol extends AbstractProtocol {
                             ByteArrayOutputStream output = new ByteArrayOutputStream();
                             ObjectOutput value = getSerialization(url).serialize(url, output);
                             value.writeObject(invocation.getArguments()[1]);
+                            // 设置值
                             resource.set(key, output.toByteArray());
                             if (expiry > 1000) {
                                 resource.expire(key, expiry / 1000);
                             }
+                            // 返回结果
                             return new RpcResult();
                         } else if (delete.equals(invocation.getMethodName())) {
                             if (invocation.getArguments().length != 1) {
                                 throw new IllegalArgumentException("The redis delete method arguments mismatch, must only one arguments. interface: " + type.getName() + ", method: " + invocation.getMethodName() + ", url: " + url);
                             }
+                            // 删除值
                             resource.del(String.valueOf(invocation.getArguments()[0]).getBytes());
                             return new RpcResult();
                         } else {
@@ -143,6 +154,7 @@ public class RedisProtocol extends AbstractProtocol {
                     } finally {
                         if (resource != null) {
                             try {
+                                // 归还 Redis Resource
                                 jedisPool.returnResource(resource);
                             } catch (Throwable t) {
                                 logger.warn("returnResource error: " + t.getMessage(), t);
@@ -152,7 +164,9 @@ public class RedisProtocol extends AbstractProtocol {
                 }
 
                 public void destroy() {
+                    // 标记销毁
                     super.destroy();
+                    // 销毁 Redis Pool
                     try {
                         jedisPool.destroy();
                     } catch (Throwable e) {
