@@ -166,7 +166,7 @@ public class RegistryProtocol implements Protocol {
             ProviderConsumerRegTable.getProviderWrapper(originInvoker).setReg(true);
         }
 
-        // 使用 OverrideListener 对象，订阅配置规则
+        // 使用 OverrideListener 对象，订阅配置规则 集群容错
         // Subscribe the override data
         // FIXME When the provider subscribes, it will affect the scene : a certain JVM exposes the service and call the same service. Because the subscribed is cached key with the name of the service, it causes the subscription information to cover.
         final URL overrideSubscribeUrl = getSubscribedOverrideUrl(registedProviderUrl);

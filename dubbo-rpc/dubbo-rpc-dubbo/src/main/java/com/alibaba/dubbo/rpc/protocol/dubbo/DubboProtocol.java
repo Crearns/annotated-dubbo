@@ -260,9 +260,9 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
 
-        // 启动服务器
+        // 启动服务器 todo:NIO服务器
         openServer(url);
-        // 初始化序列化优化器
+        // 初始化序列化优化器 todo：序列化
         optimizeSerialization(url);
         return exporter;
     }

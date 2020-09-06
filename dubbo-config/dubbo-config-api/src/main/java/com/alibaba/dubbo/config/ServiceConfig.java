@@ -79,6 +79,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     private static final ScheduledExecutorService delayExportExecutor = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("DubboServiceDelayExporter", true));
     private final List<URL> urls = new ArrayList<URL>();
+    // 有可能有不同的Protocol，有数组
     private final List<Exporter<?>> exporters = new ArrayList<Exporter<?>>();
     // interface type
     private String interfaceName;
@@ -549,8 +550,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                     logger.info("Export dubbo service " + interfaceClass.getName() + " to url " + url);
                 }
                 if (registryURLs != null && !registryURLs.isEmpty()) {
+                    // 循环祖册中心 URL 数组 registryURLs
                     for (URL registryURL : registryURLs) {
-                        // "dynamic" ：服务是否动态注册，如果设为false，注册后将显示后disable状态，需人工启用，并且服务提供者停止时，也不会自动取消册，需人工禁用。
+                        // "dynamic" ：服务是否动态注册，如果设为false，注册后将显示后disable状态，需人工启用，并且服务提供者停止时，也不会自动取消注册，需人工禁用。
                         url = url.addParameterIfAbsent("dynamic", registryURL.getParameter("dynamic"));
                         // 获得监控中心 URL
                         URL monitorUrl = loadMonitor(registryURL);

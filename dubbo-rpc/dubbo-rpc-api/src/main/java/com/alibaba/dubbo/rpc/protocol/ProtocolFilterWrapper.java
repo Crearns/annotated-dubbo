@@ -58,7 +58,6 @@ public class ProtocolFilterWrapper implements Protocol {
         // 倒序循环 Filter ，创建带 Filter 链的 Invoker 对象
         if (!filters.isEmpty()) {
             for (int i = filters.size() - 1; i >= 0; i--) {
-                // todo 这块逻辑还得看看
                 final Filter filter = filters.get(i);
                 final Invoker<T> next = last;
                 last = new Invoker<T>() {
@@ -104,12 +103,16 @@ public class ProtocolFilterWrapper implements Protocol {
         }
         // 建立带有 Filter 过滤链的 Invoker ，再暴露服务。
         return protocol.export(buildInvokerChain(invoker, Constants.SERVICE_FILTER_KEY, Constants.PROVIDER));
+
     }
 
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
+        // 注册中心
         if (Constants.REGISTRY_PROTOCOL.equals(url.getProtocol())) {
             return protocol.refer(type, url);
         }
+        // 引用服务，返回 Invoker 对象
+        // 给改 Invoker 对象，包装成带有 Filter 过滤链的 Invoker 对象
         return buildInvokerChain(protocol.refer(type, url), Constants.REFERENCE_FILTER_KEY, Constants.CONSUMER);
     }
 

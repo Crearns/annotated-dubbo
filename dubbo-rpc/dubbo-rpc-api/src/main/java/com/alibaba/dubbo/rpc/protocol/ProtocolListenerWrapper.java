@@ -54,6 +54,7 @@ public class ProtocolListenerWrapper implements Protocol {
         if (Constants.REGISTRY_PROTOCOL.equals(invoker.getUrl().getProtocol())) {
             return protocol.export(invoker);
         }
+        // 创建带 ExporterListener 的 Exporter 对象
         return new ListenerExporterWrapper<T>(protocol.export(invoker), // 暴露服务，创建 Exporter 对象
                 // 获得 ExporterListener 数组
                 Collections.unmodifiableList(ExtensionLoader.getExtensionLoader(ExporterListener.class)
