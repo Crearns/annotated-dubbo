@@ -51,6 +51,7 @@ public class GenericImplFilter implements Filter {
 
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
         String generic = invoker.getUrl().getParameter(Constants.GENERIC_KEY);
+        // 泛化实现
         if (ProtocolUtils.isGeneric(generic)
                 && !Constants.$INVOKE.equals(invocation.getMethodName())
                 && invocation instanceof RpcInvocation) {
@@ -59,12 +60,14 @@ public class GenericImplFilter implements Filter {
             Class<?>[] parameterTypes = invocation2.getParameterTypes();
             Object[] arguments = invocation2.getArguments();
 
+            // 获得参数类型数组
             String[] types = new String[parameterTypes.length];
             for (int i = 0; i < parameterTypes.length; i++) {
                 types[i] = ReflectUtils.getName(parameterTypes[i]);
             }
 
             Object[] args;
+            // 【第一步】`bean` ，序列化参数，方法参数 => JavaBeanDescriptor
             if (ProtocolUtils.isBeanGenericSerialization(generic)) {
                 args = new Object[arguments.length];
                 for (int i = 0; i < arguments.length; i++) {
@@ -74,21 +77,28 @@ public class GenericImplFilter implements Filter {
                 args = PojoUtils.generalize(arguments);
             }
 
+            // 修改调用方法的名字为 `$invoke`
             invocation2.setMethodName(Constants.$INVOKE);
+            // 设置调用方法的参数类型为 `GENERIC_PARAMETER_TYPES`
             invocation2.setParameterTypes(GENERIC_PARAMETER_TYPES);
+            // 设置调用方法的参数数组，分别为方法名、参数类型数组、参数数组
             invocation2.setArguments(new Object[]{methodName, types, args});
+
+            // 【第二步】RPC 调用
             Result result = invoker.invoke(invocation2);
 
+            // 【第三步】反序列化正常结果
             if (!result.hasException()) {
                 Object value = result.getValue();
                 try {
+                    // 【第三步】`bean` ，反序列化结果，JavaBeanDescriptor => 结果
                     Method method = invoker.getInterface().getMethod(methodName, parameterTypes);
                     if (ProtocolUtils.isBeanGenericSerialization(generic)) {
                         if (value == null) {
                             return new RpcResult(value);
                         } else if (value instanceof JavaBeanDescriptor) {
                             return new RpcResult(JavaBeanSerializeUtil.deserialize((JavaBeanDescriptor) value));
-                        } else {
+                        } else { // 必须是 JavaBeanDescriptor 返回
                             throw new RpcException(
                                     new StringBuilder(64)
                                             .append("The type of result value is ")
@@ -145,12 +155,16 @@ public class GenericImplFilter implements Filter {
             return result;
         }
 
+
+        // 泛化引用
         if (invocation.getMethodName().equals(Constants.$INVOKE)
                 && invocation.getArguments() != null
                 && invocation.getArguments().length == 3
                 && ProtocolUtils.isGeneric(generic)) {
 
+            // 参数
             Object[] args = (Object[]) invocation.getArguments()[2];
+            // `nativejava` ，校验方法参数都为 byte[]
             if (ProtocolUtils.isJavaGenericSerialization(generic)) {
 
                 for (Object arg : args) {
@@ -158,6 +172,7 @@ public class GenericImplFilter implements Filter {
                         error(byte[].class.getName(), arg.getClass().getName());
                     }
                 }
+                // `bean` ，校验方法参数为 JavaBeanDescriptor
             } else if (ProtocolUtils.isBeanGenericSerialization(generic)) {
                 for (Object arg : args) {
                     if (!(arg instanceof JavaBeanDescriptor)) {

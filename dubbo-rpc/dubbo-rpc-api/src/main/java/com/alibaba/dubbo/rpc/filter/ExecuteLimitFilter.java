@@ -37,11 +37,14 @@ public class ExecuteLimitFilter implements Filter {
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
         URL url = invoker.getUrl();
         String methodName = invocation.getMethodName();
-        Semaphore executesLimit = null;
-        boolean acquireResult = false;
+        Semaphore executesLimit = null; // 信号量
+        boolean acquireResult = false; // 是否获得信号量
+        // 获得服务提供者每服务每方法最大可并行执行请求数
         int max = url.getMethodParameter(methodName, Constants.EXECUTES_KEY, 0);
         if (max > 0) {
+            // 获得 RpcStatus 对象，基于服务 URL + 方法维度
             RpcStatus count = RpcStatus.getStatus(url, invocation.getMethodName());
+            // 获得信号量。若获得不到，抛出异常。
 //            if (count.getActive() >= max) {
             /**
              * http://manzhizhen.iteye.com/blog/2386408
@@ -54,8 +57,10 @@ public class ExecuteLimitFilter implements Filter {
         }
         long begin = System.currentTimeMillis();
         boolean isSuccess = true;
+        // 调用开始的计数
         RpcStatus.beginCount(url, methodName);
         try {
+            // 服务调用
             Result result = invoker.invoke(invocation);
             return result;
         } catch (Throwable t) {
@@ -66,7 +71,9 @@ public class ExecuteLimitFilter implements Filter {
                 throw new RpcException("unexpected exception when ExecuteLimitFilter", t);
             }
         } finally {
+            // 调用结束的计数（成功）（失败）
             RpcStatus.endCount(url, methodName, System.currentTimeMillis() - begin, isSuccess);
+            // 释放信号量
             if(acquireResult) {
                 executesLimit.release();
             }

@@ -36,5 +36,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface MethodValidated {
+    /**
+     * @return 分组集合
+     */
     Class<?>[] value() default {};
 }

@@ -64,13 +64,7 @@ class InjvmInvoker<T> extends AbstractInvoker<T> {
         }
     }
 
-    /**
-     * Exporter 集合
-     *
-     * key: 服务键
-     *
-     * 该值实际就是 {@link com.alibaba.dubbo.rpc.protocol.AbstractProtocol#exporterMap}
-     */
+
     public Result doInvoke(Invocation invocation) throws Throwable {
         // 获得 Exporter 对象
         Exporter<?> exporter = InjvmProtocol.getExporter(exporterMap, getUrl());

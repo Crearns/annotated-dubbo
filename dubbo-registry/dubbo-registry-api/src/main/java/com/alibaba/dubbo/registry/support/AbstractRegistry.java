@@ -399,6 +399,8 @@ public abstract class AbstractRegistry implements Registry {
     }
 
     /**
+     *
+     * todo：这里的全量怎么理解？
      * 通知监听器，URL 变化结果。
      * 数据流向 `urls` => {@link #notified} => {@link #properties} => {@link #file}
      *

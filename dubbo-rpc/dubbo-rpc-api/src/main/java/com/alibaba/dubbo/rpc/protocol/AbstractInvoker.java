@@ -145,7 +145,7 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
         if (attachment != null && attachment.size() > 0) {
             invocation.addAttachmentsIfAbsent(attachment);
         }
-        // 添加自定义的隐式传参
+        // 添加自定义的隐式传参，调用完后RpcContext会清空
         Map<String, String> context = RpcContext.getContext().getAttachments();
         if (context != null) {
             invocation.addAttachmentsIfAbsent(context);

@@ -34,23 +34,72 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class RpcStatus {
 
+    /**
+     * 基于服务 URL 为维度的 RpcStatus 集合
+     *
+     * key：URL
+     */
     private static final ConcurrentMap<String, RpcStatus> SERVICE_STATISTICS = new ConcurrentHashMap<String, RpcStatus>();
 
+    /**
+     * 基于服务 URL + 方法维度的 RpcStatus 集合
+     *
+     * key1：URL
+     * key2：方法名
+     */
     private static final ConcurrentMap<String, ConcurrentMap<String, RpcStatus>> METHOD_STATISTICS = new ConcurrentHashMap<String, ConcurrentMap<String, RpcStatus>>();
     private final ConcurrentMap<String, Object> values = new ConcurrentHashMap<String, Object>();
+
+    /**
+     * 调用中的次数
+     */
     private final AtomicInteger active = new AtomicInteger();
+
+    /**
+     * 总调用次数
+     */
     private final AtomicLong total = new AtomicLong();
+
+    /**
+     * 总调用失败次数
+     */
     private final AtomicInteger failed = new AtomicInteger();
+
+    /**
+     * 总调用时长，单位：毫秒
+     */
     private final AtomicLong totalElapsed = new AtomicLong();
+
+    /**
+     * 总调用失败时长，单位：毫秒
+     */
     private final AtomicLong failedElapsed = new AtomicLong();
+
+    /**
+     * 最大调用时长，单位：毫秒
+     */
     private final AtomicLong maxElapsed = new AtomicLong();
+
+    /**
+     * 最大调用失败时长，单位：毫秒
+     */
     private final AtomicLong failedMaxElapsed = new AtomicLong();
+
+    /**
+     * 最大调用成功时长，单位：毫秒
+     */
     private final AtomicLong succeededMaxElapsed = new AtomicLong();
 
     /**
      * Semaphore used to control concurrency limit set by `executes`
+     *
+     * 服务执行信号量，在 {@link com.alibaba.dubbo.rpc.filter.ExecuteLimitFilter} 中使用
      */
     private volatile Semaphore executesLimit;
+
+    /**
+     * 服务执行信号量大小
+     */
     private volatile int executesPermits;
 
     private RpcStatus() {
@@ -62,7 +111,9 @@ public class RpcStatus {
      */
     public static RpcStatus getStatus(URL url) {
         String uri = url.toIdentityString();
+        // 获得
         RpcStatus status = SERVICE_STATISTICS.get(uri);
+        // 不存在，则进行创建
         if (status == null) {
             SERVICE_STATISTICS.putIfAbsent(uri, new RpcStatus());
             status = SERVICE_STATISTICS.get(uri);
@@ -85,12 +136,17 @@ public class RpcStatus {
      */
     public static RpcStatus getStatus(URL url, String methodName) {
         String uri = url.toIdentityString();
+        // 获得方法集合
         ConcurrentMap<String, RpcStatus> map = METHOD_STATISTICS.get(uri);
+        // 不存在，创建方法集合
         if (map == null) {
             METHOD_STATISTICS.putIfAbsent(uri, new ConcurrentHashMap<String, RpcStatus>());
             map = METHOD_STATISTICS.get(uri);
         }
+
+        // 获得 RpcStatus 对象
         RpcStatus status = map.get(methodName);
+        // 不存在，创建 RpcStatus 对象
         if (status == null) {
             map.putIfAbsent(methodName, new RpcStatus());
             status = map.get(methodName);
@@ -122,19 +178,25 @@ public class RpcStatus {
     }
 
     /**
-     * @param url
-     * @param elapsed
-     * @param succeeded
+     * 服务调用结束的计数
+     *
+     * @param url URL 对象
+     * @param elapsed 时长，毫秒
+     * @param succeeded 是否成功
      */
     public static void endCount(URL url, String methodName, long elapsed, boolean succeeded) {
+        // `SERVICE_STATISTICS` 的计数
         endCount(getStatus(url), elapsed, succeeded);
+        // `METHOD_STATISTICS` 的计数
         endCount(getStatus(url, methodName), elapsed, succeeded);
     }
 
     private static void endCount(RpcStatus status, long elapsed, boolean succeeded) {
+        // 次数计数
         status.active.decrementAndGet();
         status.total.incrementAndGet();
         status.totalElapsed.addAndGet(elapsed);
+        // 时长计数
         if (status.maxElapsed.get() < elapsed) {
             status.maxElapsed.set(elapsed);
         }
@@ -143,7 +205,7 @@ public class RpcStatus {
                 status.succeededMaxElapsed.set(elapsed);
             }
         } else {
-            status.failed.incrementAndGet();
+            status.failed.incrementAndGet(); // 失败次数
             status.failedElapsed.addAndGet(elapsed);
             if (status.failedMaxElapsed.get() < elapsed) {
                 status.failedMaxElapsed.set(elapsed);
@@ -318,6 +380,7 @@ public class RpcStatus {
      * @param maxThreadNum value of {@link Constants#EXECUTES_KEY}
      * @return thread number semaphore
      */
+    // 若信号量不存在，或者信号量大小改变，创建新的信号量
     public Semaphore getSemaphore(int maxThreadNum) {
         if(maxThreadNum <= 0) {
             return null;
@@ -332,6 +395,7 @@ public class RpcStatus {
             }
         }
 
+        // 返回信号量
         return executesLimit;
     }
 }

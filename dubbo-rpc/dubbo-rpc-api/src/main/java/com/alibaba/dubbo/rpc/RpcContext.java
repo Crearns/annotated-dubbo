@@ -45,39 +45,84 @@ import java.util.concurrent.TimeoutException;
  */
 public class RpcContext {
 
+    /**
+     * RpcContext 线程变量
+     */
     private static final ThreadLocal<RpcContext> LOCAL = new ThreadLocal<RpcContext>() {
         @Override
         protected RpcContext initialValue() {
             return new RpcContext();
         }
     };
+
+    /**
+     * 隐式参数集合
+     */
     private final Map<String, String> attachments = new HashMap<String, String>();
+
+    // 实际未使用
     private final Map<String, Object> values = new HashMap<String, Object>();
+
+    /**
+     * 异步调用 Future
+     */
     private Future<?> future;
 
+    /**
+     * 可调用服务的 URL 对象集合
+     */
     private List<URL> urls;
 
+    /**
+     * 调用服务的 URL 对象
+     */
     private URL url;
 
+    /**
+     * 方法名
+     */
     private String methodName;
 
+    /**
+     * 参数类型数组
+     */
     private Class<?>[] parameterTypes;
 
+    /**
+     * 参数值数组
+     */
     private Object[] arguments;
 
+    /**
+     * 服务消费者地址
+     */
     private InetSocketAddress localAddress;
 
+    /**
+     * 服务提供者地址
+     */
     private InetSocketAddress remoteAddress;
-    @Deprecated
+    @Deprecated  // DUBBO-325 废弃的，使用 urls 属性替代
     private List<Invoker<?>> invokers;
-    @Deprecated
+    @Deprecated // DUBBO-325 废弃的，使用 url 属性替代
     private Invoker<?> invoker;
-    @Deprecated
+    @Deprecated // DUBBO-325 废弃的，使用 methodName、parameterTypes、arguments 属性替代
     private Invocation invocation;
 
+    /**
+     * 请求
+     *
+     * 例如，在 RestProtocol
+     */
     // now we don't use the 'values' map to hold these objects
     // we want these objects to be as generic as possible
     private Object request;
+
+    /**
+     * 响应
+     *
+     * 例如，在 RestProtocol
+     */
     private Object response;
 
     protected RpcContext() {

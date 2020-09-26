@@ -190,7 +190,7 @@ public class RegistryProtocol implements Protocol {
                 if (exporter == null) {
                     // 创建 Invoker Delegate 对象
                     final Invoker<?> invokerDelegete = new InvokerDelegete<T>(originInvoker, getProviderUrl(originInvoker));
-                    // 暴露服务，创建 Exporter 对象
+                    // 暴露服务，创建 Exporter 对象，这里才是真正的服务
                     // 使用 创建的Exporter对象 + originInvoker ，创建 ExporterChangeableWrapper 对象
                     exporter = new ExporterChangeableWrapper<T>((Exporter<T>) protocol.export(invokerDelegete), originInvoker);
                     // 添加到 `bounds`
