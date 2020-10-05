@@ -29,8 +29,14 @@ import io.netty.channel.ChannelPromise;
 @io.netty.channel.ChannelHandler.Sharable
 public class NettyClientHandler extends ChannelDuplexHandler {
 
+    /**
+     * Dubbo URL
+     */
     private final URL url;
 
+    /**
+     * Dubbo ChannelHandler
+     */
     private final ChannelHandler handler;
 
     public NettyClientHandler(URL url, ChannelHandler handler) {

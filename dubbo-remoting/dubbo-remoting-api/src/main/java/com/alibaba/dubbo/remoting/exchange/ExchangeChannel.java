@@ -45,7 +45,7 @@ public interface ExchangeChannel extends Channel {
 
     /**
      * get message handler.
-     *
+     * 获得信息交换处理器
      * @return message handler
      */
     ExchangeHandler getExchangeHandler();

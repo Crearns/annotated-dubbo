@@ -36,12 +36,24 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
 
     protected static final Logger logger = LoggerFactory.getLogger(WrappedChannelHandler.class);
 
+    /**
+     * 共享线程池
+     */
     protected static final ExecutorService SHARED_EXECUTOR = Executors.newCachedThreadPool(new NamedThreadFactory("DubboSharedHandler", true));
 
+    /**
+     * 线程池
+     */
     protected final ExecutorService executor;
 
+    /**
+     * 通道处理器
+     */
     protected final ChannelHandler handler;
 
+    /**
+     * URL
+     */
     protected final URL url;
 
     public WrappedChannelHandler(ChannelHandler handler, URL url) {

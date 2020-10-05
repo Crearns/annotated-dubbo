@@ -157,16 +157,20 @@ public class TelnetCodec extends TransportCodec {
 
     @SuppressWarnings("unchecked")
     protected Object decode(Channel channel, ChannelBuffer buffer, int readable, byte[] message) throws IOException {
+
         if (isClientSide(channel)) {
             return toString(message, getCharset(channel));
         }
+        // 检查长度
         checkPayload(channel, readable);
         if (message == null || message.length == 0) {
             return DecodeResult.NEED_MORE_INPUT;
         }
 
+        // 处理退格的情况。
         if (message[message.length - 1] == '\b') { // Windows backspace echo
             try {
+                // 32=空格 8=退格
                 boolean doublechar = message.length >= 3 && message[message.length - 3] < 0; // double byte char
                 channel.send(new String(doublechar ? new byte[]{32, 32, 8, 8} : new byte[]{32, 8}, getCharset(channel).name()));
             } catch (RemotingException e) {
@@ -175,6 +179,7 @@ public class TelnetCodec extends TransportCodec {
             return DecodeResult.NEED_MORE_INPUT;
         }
 
+        // 关闭指令
         for (Object command : EXIT) {
             if (isEquals(message, (byte[]) command)) {
                 if (logger.isInfoEnabled()) {
@@ -185,6 +190,7 @@ public class TelnetCodec extends TransportCodec {
             }
         }
 
+        // 使用历史的命令
         boolean up = endsWith(message, UP);
         boolean down = endsWith(message, DOWN);
         if (up || down) {

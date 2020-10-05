@@ -30,10 +30,19 @@ import com.alibaba.dubbo.remoting.transport.ChannelHandlerDispatcher;
  */
 public class ExchangeHandlerDispatcher implements ExchangeHandler {
 
+    /**
+     * 回复者调度器
+     */
     private final ReplierDispatcher replierDispatcher;
 
+    /**
+     * 通道处理器集合
+     */
     private final ChannelHandlerDispatcher handlerDispatcher;
 
+    /**
+     * Telnet 命令处理器
+     */
     private final TelnetHandler telnetHandler;
 
     public ExchangeHandlerDispatcher() {

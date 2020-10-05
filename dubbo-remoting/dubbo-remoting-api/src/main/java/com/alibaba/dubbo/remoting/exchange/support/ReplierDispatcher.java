@@ -27,8 +27,16 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ReplierDispatcher implements Replier<Object> {
 
+    /**
+     * 默认回复者
+     */
     private final Replier<?> defaultReplier;
 
+    /**
+     * 回复者集合
+     *
+     * key：类
+     */
     private final Map<Class<?>, Replier<?>> repliers = new ConcurrentHashMap<Class<?>, Replier<?>>();
 
     public ReplierDispatcher() {

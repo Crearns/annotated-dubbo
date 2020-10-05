@@ -29,6 +29,7 @@ public class HeapChannelBuffer extends AbstractChannelBuffer {
 
     /**
      * The underlying heap byte array that this buffer is wrapping.
+     * 字节数组
      */
     protected final byte[] array;
 

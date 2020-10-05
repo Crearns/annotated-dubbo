@@ -24,8 +24,14 @@ import java.nio.ByteBuffer;
 
 public class DynamicChannelBuffer extends AbstractChannelBuffer {
 
+    /**
+     * 工厂
+     */
     private final ChannelBufferFactory factory;
 
+    /**
+     * Buffer
+     */
     private ChannelBuffer buffer;
 
     public DynamicChannelBuffer(int estimatedLength) {
@@ -39,7 +45,9 @@ public class DynamicChannelBuffer extends AbstractChannelBuffer {
         if (factory == null) {
             throw new NullPointerException("factory");
         }
+        // 设置 `factory`
         this.factory = factory;
+        // 创建 `buffer`
         buffer = factory.getBuffer(estimatedLength);
     }
 
