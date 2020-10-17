@@ -26,11 +26,15 @@ public interface Container {
 
     /**
      * start.
+     *
+     * 启动
      */
     void start();
 
     /**
      * stop.
+     *
+     * 停止
      */
     void stop();
 

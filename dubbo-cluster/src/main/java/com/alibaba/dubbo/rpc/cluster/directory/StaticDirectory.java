@@ -45,6 +45,7 @@ public class StaticDirectory<T> extends AbstractDirectory<T> {
     }
 
     public StaticDirectory(URL url, List<Invoker<T>> invokers, List<Router> routers) {
+        // 默认使用 `url` 参数。当它为空时，使用 `invokers[0].url` 。
         super(url == null && invokers != null && !invokers.isEmpty() ? invokers.get(0).getUrl() : url, routers);
         if (invokers == null || invokers.isEmpty())
             throw new IllegalArgumentException("invokers == null");
@@ -56,6 +57,7 @@ public class StaticDirectory<T> extends AbstractDirectory<T> {
     }
 
     public boolean isAvailable() {
+        // 若已经销毁，则不可用
         if (isDestroyed()) {
             return false;
         }
@@ -68,13 +70,17 @@ public class StaticDirectory<T> extends AbstractDirectory<T> {
     }
 
     public void destroy() {
+        // 若已经销毁， 跳过
         if (isDestroyed()) {
             return;
         }
+        // 销毁
         super.destroy();
+        // 销毁每个 Invoker
         for (Invoker<T> invoker : invokers) {
             invoker.destroy();
         }
+        // 清空 Invoker 集合
         invokers.clear();
     }
 
