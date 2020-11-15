@@ -493,12 +493,13 @@ public abstract class AbstractRegistry implements Registry {
         if (logger.isInfoEnabled()) {
             logger.info("Destroy registry:" + getUrl());
         }
+        // 取消注册
         Set<URL> destroyRegistered = new HashSet<URL>(getRegistered());
         if (!destroyRegistered.isEmpty()) {
             for (URL url : new HashSet<URL>(getRegistered())) {
                 if (url.getParameter(Constants.DYNAMIC_KEY, true)) {
                     try {
-                        unregister(url);
+                        unregister(url);  // 取消注册
                         if (logger.isInfoEnabled()) {
                             logger.info("Destroy unregister url " + url);
                         }
@@ -508,13 +509,14 @@ public abstract class AbstractRegistry implements Registry {
                 }
             }
         }
+        // 取消订阅
         Map<URL, Set<NotifyListener>> destroySubscribed = new HashMap<URL, Set<NotifyListener>>(getSubscribed());
         if (!destroySubscribed.isEmpty()) {
             for (Map.Entry<URL, Set<NotifyListener>> entry : destroySubscribed.entrySet()) {
                 URL url = entry.getKey();
                 for (NotifyListener listener : entry.getValue()) {
                     try {
-                        unsubscribe(url, listener);
+                        unsubscribe(url, listener); // 取消订阅
                         if (logger.isInfoEnabled()) {
                             logger.info("Destroy unsubscribe url " + url);
                         }

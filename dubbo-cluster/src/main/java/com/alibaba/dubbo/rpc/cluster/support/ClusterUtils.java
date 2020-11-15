@@ -36,6 +36,7 @@ public class ClusterUtils {
         Map<String, String> remoteMap = remoteUrl.getParameters();
 
 
+        // 添加 `remoteMap` 到 `map` 中，并移除不必要的配置
         if (remoteMap != null && remoteMap.size() > 0) {
             map.putAll(remoteMap);
 
@@ -62,9 +63,13 @@ public class ClusterUtils {
             map.remove(Constants.DEFAULT_KEY_PREFIX + Constants.TRANSPORTER_KEY);
         }
 
+
+        // 添加 `localMap` 到 `map` 中
         if (localMap != null && localMap.size() > 0) {
             map.putAll(localMap);
         }
+
+        // 添加指定的 `remoteMap` 的配置项到 `map` 中，因为上面被 `localMap` 覆盖了。
         if (remoteMap != null && remoteMap.size() > 0) {
             // Use version passed from provider side
             String dubbo = remoteMap.get(Constants.DUBBO_VERSION_KEY);
@@ -103,6 +108,7 @@ public class ClusterUtils {
             }
         }
 
+        // 清空原有配置，使用合并的配置覆盖
         return remoteUrl.clearParameters().addParameters(map);
     }
 

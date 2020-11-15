@@ -287,7 +287,7 @@ public class ExtensionLoader<T> {
             getExtensionClasses();
             // 循环
             for (Map.Entry<String, Activate> entry : cachedActivates.entrySet()) {
-                String name = entry.getKey();
+                String name = entry.getKey  ();
                 Activate activate = entry.getValue();
                 if (isMatchGroup(group, activate.group())) { // 匹配分组
                     // 获得拓展对象

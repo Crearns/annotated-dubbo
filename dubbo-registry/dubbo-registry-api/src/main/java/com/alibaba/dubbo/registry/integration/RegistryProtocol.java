@@ -355,7 +355,9 @@ public class RegistryProtocol implements Protocol {
     }
 
     public void destroy() {
+        // 获得 Exporter 数组
         List<Exporter<?>> exporters = new ArrayList<Exporter<?>>(bounds.values());
+        // 取消所有 Exporter 的暴露
         for (Exporter<?> exporter : exporters) {
             exporter.unexport();
         }

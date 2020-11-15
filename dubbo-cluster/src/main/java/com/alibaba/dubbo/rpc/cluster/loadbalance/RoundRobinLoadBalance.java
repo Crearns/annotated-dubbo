@@ -44,6 +44,7 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
         int minWeight = Integer.MAX_VALUE; // The minimum weight
         final LinkedHashMap<Invoker<T>, IntegerWrapper> invokerToWeightMap = new LinkedHashMap<Invoker<T>, IntegerWrapper>();
         int weightSum = 0;
+        // 计算最小、最大权重，总的权重和。
         for (int i = 0; i < length; i++) {
             int weight = getWeight(invokers.get(i), invocation);
             maxWeight = Math.max(maxWeight, weight); // Choose the maximum weight
@@ -53,18 +54,22 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
                 weightSum += weight;
             }
         }
+        // 获得 AtomicPositiveInteger 对象
         AtomicPositiveInteger sequence = sequences.get(key);
         if (sequence == null) {
             sequences.putIfAbsent(key, new AtomicPositiveInteger());
             sequence = sequences.get(key);
         }
+        // 获得当前顺序号，并递增 + 1
         int currentSequence = sequence.getAndIncrement();
+        // 权重不相等，顺序根据权重分配
         if (maxWeight > 0 && minWeight < maxWeight) {
-            int mod = currentSequence % weightSum;
-            for (int i = 0; i < maxWeight; i++) {
+            int mod = currentSequence % weightSum; // 剩余权重
+            for (int i = 0; i < maxWeight; i++) { // 循环最大权重
                 for (Map.Entry<Invoker<T>, IntegerWrapper> each : invokerToWeightMap.entrySet()) {
                     final Invoker<T> k = each.getKey();
                     final IntegerWrapper v = each.getValue();
+                    // 剩余权重归 0 ，当前 Invoker 还有剩余权重，返回该 Invoker 对象
                     if (mod == 0 && v.getValue() > 0) {
                         return k;
                     }

@@ -132,6 +132,9 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
      */
     private volatile boolean forbidden = false;
 
+    /**
+     * 覆写的目录 URL ，结合配置规则
+     */
     private volatile URL overrideDirectoryUrl; // Initialization at construction time, assertion not null, and always assign non null value
 
     /**
@@ -315,21 +318,23 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
      */
     // TODO: 2017/8/31 FIXME The thread pool should be used to refresh the address, otherwise the task may be accumulated.
     private void refreshInvoker(List<URL> invokerUrls) {
+        // 当 invokerUrls 集合大小为 1 ，并且协议为 empty:// ，说明所有服务提供者都已经下线。若注册中心为 Zookeeper
+        // 可参见 ZookeeperRegistry#toUrlsWithEmpty(URL consumer, String path, List<String> providers) 方法。
         if (invokerUrls != null && invokerUrls.size() == 1 && invokerUrls.get(0) != null
                 && Constants.EMPTY_PROTOCOL.equals(invokerUrls.get(0).getProtocol())) {
-            // 设置禁止访问
+            // 设置禁止访问 因为没有服务提供者了
             this.forbidden = true; // Forbid to access
             // methodInvokerMap 置空
             this.methodInvokerMap = null; // Set the method invoker map to null
             // 销毁所有 Invoker 集合
             destroyAllInvokers(); // Close all invokers
         } else {
-            // 设置允许访问
+            // 设置允许访问 设置允许访问，因为有服务提供者了。
             this.forbidden = false; // Allow to access
             // 引用老的 urlInvokerMap
             Map<String, Invoker<T>> oldUrlInvokerMap = this.urlInvokerMap; // local reference
             // 传入的 invokerUrls 为空，说明是路由规则或配置规则发生改变，此时 invokerUrls 是空的，直接使用 cachedInvokerUrls 。
-            if (invokerUrls.isEmpty() && this.cachedInvokerUrls != null) {
+            if (invokerUrls.isEmpty() && this.cachedInvokerUrls != null) { // tesla
                 invokerUrls.addAll(this.cachedInvokerUrls);
             } else { // 传入的 invokerUrls 非空，更新 cachedInvokerUrls 。
                 this.cachedInvokerUrls = new HashSet<URL>();
@@ -460,16 +465,20 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                     continue;
                 }
             }
+            // 忽略，若为 `empty://` 协议
             if (Constants.EMPTY_PROTOCOL.equals(providerUrl.getProtocol())) {
                 continue;
             }
+            // 忽略，若应用程序不支持该协议
             if (!ExtensionLoader.getExtensionLoader(Protocol.class).hasExtension(providerUrl.getProtocol())) {
                 logger.error(new IllegalStateException("Unsupported protocol " + providerUrl.getProtocol() + " in notified url: " + providerUrl + " from registry " + getUrl().getAddress() + " to consumer " + NetUtils.getLocalHost()
                         + ", supported protocol: " + ExtensionLoader.getExtensionLoader(Protocol.class).getSupportedExtensions()));
                 continue;
             }
+            // 合并 URL 参数
             URL url = mergeUrl(providerUrl);
 
+            // 忽略，若已经初始化
             String key = url.toFullString(); // The parameter urls are sorted
             if (keys.contains(key)) { // Repeated url
                 continue;
@@ -802,6 +811,11 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
      * @param <T>
      */
     private static class InvokerDelegate<T> extends InvokerWrapper<T> {
+        /**
+         * 服务提供者 URL
+         *
+         * 未经过配置合并
+         */
         private URL providerUrl;
 
         public InvokerDelegate(Invoker<T> invoker, URL url, URL providerUrl) {

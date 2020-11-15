@@ -44,9 +44,11 @@ public class ExecutorUtil {
     }
 
     public static void gracefulShutdown(Executor executor, int timeout) {
+        // 忽略，若不是 ExecutorService ，或者已经关闭
         if (!(executor instanceof ExecutorService) || isShutdown(executor)) {
             return;
         }
+        // 关闭，禁止新的任务提交，将原有任务执行完
         final ExecutorService es = (ExecutorService) executor;
         try {
             es.shutdown(); // Disable new tasks from being submitted
@@ -55,6 +57,7 @@ public class ExecutorUtil {
         } catch (NullPointerException ex2) {
             return;
         }
+        // 等待原有任务执行完。若等待超时，强制结束所有任务
         try {
             if (!es.awaitTermination(timeout, TimeUnit.MILLISECONDS)) {
                 es.shutdownNow();
@@ -63,16 +66,21 @@ public class ExecutorUtil {
             es.shutdownNow();
             Thread.currentThread().interrupt();
         }
+        // 若未关闭成功，新开线程去关闭
         if (!isShutdown(es)) {
             newThreadToCloseExecutor(es);
         }
     }
 
     public static void shutdownNow(Executor executor, final int timeout) {
+        // 忽略，若不是 ExecutorService ，或者已经关闭
         if (!(executor instanceof ExecutorService) || isShutdown(executor)) {
             return;
         }
+        // 立即关闭，包括原有任务也打断
         final ExecutorService es = (ExecutorService) executor;
+
+        // 等待原有任务被打断完成
         try {
             es.shutdownNow();
         } catch (SecurityException ex2) {
@@ -85,6 +93,8 @@ public class ExecutorUtil {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
+
+        // 若未关闭成功，新开线程去关闭
         if (!isShutdown(es)) {
             newThreadToCloseExecutor(es);
         }
@@ -95,8 +105,10 @@ public class ExecutorUtil {
             shutdownExecutor.execute(new Runnable() {
                 public void run() {
                     try {
+                        // 循环 1000 次，不断强制结束线程池
                         for (int i = 0; i < 1000; i++) {
                             es.shutdownNow();
+                            // 等待原有任务被打断完成
                             if (es.awaitTermination(10, TimeUnit.MILLISECONDS)) {
                                 break;
                             }

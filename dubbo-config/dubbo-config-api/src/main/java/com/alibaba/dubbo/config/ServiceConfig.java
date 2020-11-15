@@ -563,7 +563,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                             logger.info("Register dubbo service " + interfaceClass.getName() + " url " + url + " to registry " + registryURL);
                         }
 
-                        // 使用 ProxyFactory 创建 Invoker 对象
+                        // 使用 ProxyFactory 创建 Invoker 对象  // zookeeper://127.0.0.1?export=dubbo://127.0.0.1?xxxx
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(Constants.EXPORT_KEY, url.toFullString()));
 
                         // 创建 DelegateProviderMetaDataInvoker 对象
