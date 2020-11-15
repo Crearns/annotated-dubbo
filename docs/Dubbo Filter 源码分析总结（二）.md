@@ -189,3 +189,160 @@ TokenFilter 用于服务提供者中，提供 令牌验证 的功能。通过令
 
     }
     ```
+
+## TpsLimitFilter
+
+TpsLimitFilter 用于服务提供者中，提供 限流 的功能。
+
+```java
+/**
+ * Limit TPS for either service or service's particular method
+ */
+@Activate(group = Constants.PROVIDER, value = Constants.TPS_LIMIT_RATE_KEY)
+public class TpsLimitFilter implements Filter {
+
+    private final TPSLimiter tpsLimiter = new DefaultTPSLimiter();
+
+    public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+
+        if (!tpsLimiter.isAllowable(invoker.getUrl(), invocation)) {
+            throw new RpcException(
+                    new StringBuilder(64)
+                            .append("Failed to invoke service ")
+                            .append(invoker.getInterface().getName())
+                            .append(".")
+                            .append(invocation.getMethodName())
+                            .append(" because exceed max service tps.")
+                            .toString());
+        }
+
+        return invoker.invoke(invocation);
+    }
+
+}
+
+```
+
+### TPSLimiter
+
+```java
+
+public interface TPSLimiter {
+
+    /**
+     * judge if the current invocation is allowed by TPS rule
+     *
+     * 根据 tps 限流规则判断是否限制此次调用.
+     *
+     * @param url        url
+     * @param invocation invocation
+     * @return true allow the current invocation, otherwise, return false
+     */
+    boolean isAllowable(URL url, Invocation invocation);
+
+}
+
+```
+
+### DefaultTPSLimiter
+DefaultTPSLimiter 实现 TPSLimiter 接口，默认 TPS 限制器实现类，以服务为维度
+
+```java
+public class DefaultTPSLimiter implements TPSLimiter {
+
+    private final ConcurrentMap<String, StatItem> stats
+            = new ConcurrentHashMap<String, StatItem>();
+
+    public boolean isAllowable(URL url, Invocation invocation) {
+        // 获得 TPS 大小配置项
+        int rate = url.getParameter(Constants.TPS_LIMIT_RATE_KEY, -1);
+        // 获得 TPS 周期配置项，默认 60 秒
+        long interval = url.getParameter(Constants.TPS_LIMIT_INTERVAL_KEY,
+                Constants.DEFAULT_TPS_LIMIT_INTERVAL);
+        String serviceKey = url.getServiceKey();
+        // 要限流
+        if (rate > 0) {
+            // 获得 StatItem 对象
+            StatItem statItem = stats.get(serviceKey);
+            // 不存在，则进行创建
+            if (statItem == null) {
+                stats.putIfAbsent(serviceKey,
+                        new StatItem(serviceKey, rate, interval));
+                statItem = stats.get(serviceKey);
+            }
+            // 根据 TPS 限流规则判断是否限制此次调用.
+            return statItem.isAllowable();
+        } else { // 不限流
+            // 移除 StatItem
+            StatItem statItem = stats.get(serviceKey);
+            if (statItem != null) {
+                // 返回通过
+                stats.remove(serviceKey);
+            }
+        }
+
+        return true;
+    }
+
+}
+
+class StatItem {
+
+    private String name;
+
+    private long lastResetTime;
+
+    private long interval;
+
+    private AtomicInteger token;
+
+    private int rate;
+
+    StatItem(String name, int rate, long interval) {
+        this.name = name;
+        this.rate = rate;
+        this.interval = interval;
+        this.lastResetTime = System.currentTimeMillis();
+        this.token = new AtomicInteger(rate);
+    }
+
+    public boolean isAllowable() {
+        // 若到达下一个周期，恢复可用种子数，设置最后重置时间。
+        long now = System.currentTimeMillis();
+        if (now > lastResetTime + interval) {
+            token.set(rate); // 回复可用种子数
+            lastResetTime = now; // 最后重置时间
+        }
+
+        // CAS ，直到或得到一个种子，或者没有足够种子
+        int value = token.get();
+        boolean flag = false;
+        while (value > 0 && !flag) {
+            flag = token.compareAndSet(value, value - 1);
+            value = token.get();
+        }
+
+        // 是否成功
+        return flag;
+    }
+
+    long getLastResetTime() {
+        return lastResetTime;
+    }
+
+    int getToken() {
+        return token.get();
+    }
+
+    public String toString() {
+        return new StringBuilder(32).append("StatItem ")
+                .append("[name=").append(name).append(", ")
+                .append("rate = ").append(rate).append(", ")
+                .append("interval = ").append(interval).append("]")
+                .toString();
+    }
+
+}
+
+
+```
